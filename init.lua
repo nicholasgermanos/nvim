@@ -13,6 +13,7 @@ vim.opt.tabstop = 4
 vim.opt.softtabstop = 4
 vim.opt.shiftwidth = 4
 vim.opt.cursorline = true
+vim.opt.termguicolors = true
 
 --
 -- Auto commands
@@ -66,19 +67,100 @@ local function tnoremap(rhs, lhs, desc)
 	remap("t", rhs, lhs, desc)
 end
 
-nnoremap("k", "kzz", "Up Centered")
-nnoremap("j", "jzz", "Down Centered")
-nnoremap("G", "Gzz", "[G]round Centered")
+--nnoremap("k", "kzz", "Up Centered")
+--nnoremap("j", "jzz", "Down Centered")
+--nnoremap("G", "Gzz", "[G]round Centered")
+
+nnoremap("H", function()
+	vim.cmd("wincmd h")
+end, "Move to left window")
+
+nnoremap("L", function()
+	local win_num = vim.api.nvim_win_get_number(vim.api.nvim_get_current_win())
+	vim.cmd("wincmd l")
+	local win_num_new = vim.api.nvim_win_get_number(vim.api.nvim_get_current_win())
+	if win_num == win_num_new then
+		vim.cmd("wincmd j")
+	end
+end, "Move to right window or down")
+
 nnoremap("<leader>dd", "<cmd> lua vim.diagnostic.open_float() <CR>", "?   toggles local troubleshoot")
 nnoremap("<leader>s!", "<cmd>wqa<cr>", "Save everything and quit")
 nnoremap("<leader>S!", "<cmd>qa!<cr>", "Discard all and quit")
 
 tnoremap("zz", "<C-\\><C-n>", "Exit terminal insert mode")
+
 --
 -- LAZY PLUGINS
 --
 
 require("lazy").setup({
+
+	-- Quality of life things
+
+	{
+		"folke/snacks.nvim",
+		priority = 1000,
+		lazy = false,
+		---@type snacks.Config
+		opts = {
+			-- your configuration comes here
+			-- or leave it empty to use the default settings
+			-- refer to the configuration section below
+			bigfile = { enabled = true },
+			dashboard = { enabled = true },
+			explorer = { enabled = true },
+			input = { enabled = true },
+			picker = { enabled = true },
+			notifier = { enabled = true },
+			quickfile = { enabled = true },
+			scope = { enabled = true },
+			scroll = { enabled = false },
+			statuscolumn = { enabled = true },
+			words = { enabled = true },
+		},
+	},
+
+	-- Popup errors and things
+	{
+		"folke/noice.nvim",
+		event = "VeryLazy",
+		opts = {
+			-- add any options here
+		},
+		dependencies = {
+			-- if you lazy-load any plugin below, make sure to add proper `module="..."` entries
+			"MunifTanjim/nui.nvim",
+			-- OPTIONAL:
+			--   `nvim-notify` is only needed, if you want to use the notification view.
+			--   If not available, we use `mini` as the fallback
+			"rcarriga/nvim-notify",
+		},
+		lsp = {
+			-- override markdown rendering so that **cmp** and other plugins use **Treesitter**
+			override = {
+				["vim.lsp.util.convert_input_to_markdown_lines"] = true,
+				["vim.lsp.util.stylize_markdown"] = true,
+				["cmp.entry.get_documentation"] = true, -- requires hrsh7th/nvim-cmp
+			},
+		},
+		-- you can enable a preset for easier configuration
+		presets = {
+			bottom_search = true, -- use a classic bottom cmdline for search
+			command_palette = true, -- position the cmdline and popupmenu together
+			long_message_to_split = true, -- long messages will be sent to a split
+			inc_rename = false, -- enables an input dialog for inc-rename.nvim
+			lsp_doc_border = false, -- add a border to hover docs and signature help
+		},
+	},
+
+	{ "famiu/feline.nvim", opts = {} },
+
+	-- Keep cursor in middle of screen
+	{
+		"arnamak/stay-centered.nvim",
+		opts = {},
+	},
 
 	-- Color Schemes
 	{ "catppuccin/nvim", as = "catppuccin" },
@@ -202,9 +284,26 @@ require("lazy").setup({
 			"MunifTanjim/nui.nvim",
 			"3rd/image.nvim", -- Optional image support in preview window: See `# Preview Mode` for more information
 		},
+
 		config = function()
 			nnoremap("<leader>nt", "<cmd>Neotree reveal toggle<cr>", "Toggle NeoTree window")
 			require("neo-tree").setup({
+				window = {
+					mappings = {
+						["l"] = function(state)
+							local neo_tree = require("neo-tree.sources.filesystem.commands")
+							neo_tree.open(state)
+							local r, c = unpack(vim.api.nvim_win_get_cursor(0))
+							vim.api.nvim_win_set_cursor(vim.api.nvim_get_current_win(), { r + 1, c })
+						end,
+						["h"] = function(state, callback)
+							local neo_tree = require("neo-tree.sources.common.commands")
+							neo_tree.close_node(state, callback)
+							local r, c = unpack(vim.api.nvim_win_get_cursor(0))
+							vim.api.nvim_win_set_cursor(vim.api.nvim_get_current_win(), { math.max(r - 1, 1), c })
+						end,
+					},
+				},
 				close_if_last_window = true,
 			})
 		end,
@@ -340,23 +439,10 @@ require("lazy").setup({
 			--  - settings (table): Override the default settings passed when initializing the server.
 			--        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
 			local servers = {
-				-- clangd = {},
-				-- gopls = {},
-				-- pyright = {},
-				-- rust_analyzer = {},
-				-- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
-				--
-				-- Some languages (like typescript) have entire language plugins that can be useful:
-				--    https://github.com/pmizio/typescript-tools.nvim
-				--
-				-- But for many setups, the LSP (`ts_ls`) will work just fine
-				-- ts_ls = {},
-				--
-
+				pyright = {},
+				vue_ls = {},
+				cssls = {},
 				lua_ls = {
-					-- cmd = { ... },
-					-- filetypes = { ... },
-					-- capabilities = {},
 					settings = {
 						Lua = {
 							diagnostics = {
@@ -374,34 +460,20 @@ require("lazy").setup({
 							completion = {
 								callSnippet = "Replace",
 							},
-							-- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
-							-- diagnostics = { disable = { 'missing-fields' } },
 						},
 					},
 				},
 			}
 
-			-- Ensure the servers and tools above are installed
-			--
-			-- To check the current status of installed tools and/or manually install
-			-- other tools, you can run
-			--    :Mason
-			--
-			-- You can press `g?` for help in this menu.
-			--
-			-- `mason` had to be setup earlier: to configure its options see the
-			-- `dependencies` table for `nvim-lspconfig` above.
-			--
-			-- You can add other tools here that you want Mason to install
-			-- for you, so that they are available from within Neovim.
 			local ensure_installed = vim.tbl_keys(servers or {})
 			vim.list_extend(ensure_installed, {
 				"stylua", -- Used to format Lua code
+				"autoflake",
 			})
 			require("mason-tool-installer").setup({ ensure_installed = ensure_installed })
 
 			require("mason-lspconfig").setup({
-				ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
+				ensure_installed = {},
 				automatic_enable = true,
 				automatic_installation = false,
 				handlers = {
@@ -417,8 +489,6 @@ require("lazy").setup({
 			})
 		end,
 	},
-
-	{ "ChiliConSql/neovim-stylus" },
 
 	{ -- Autoformat
 		"stevearc/conform.nvim",
@@ -453,12 +523,22 @@ require("lazy").setup({
 			formatters_by_ft = {
 				lua = { "stylua" },
 				-- Conform can also run multiple formatters sequentially
-				-- python = { "isort", "black" },
+				python = { "isort", "black" },
 				--
 				-- You can use 'stop_after_first' to run the first available formatter from the list
 				-- javascript = { "prettierd", "prettier", stop_after_first = true },
 			},
 		},
+	},
+
+	{
+		"saghen/blink.compat",
+		-- use v2.* for blink.cmp v1.*
+		version = "2.*",
+		-- lazy.nvim will automatically load the plugin when it's required by blink.cmp
+		lazy = true,
+		-- make sure to set opts so that lazy.nvim calls blink.compat's setup
+		opts = {},
 	},
 
 	-- Autocompletion
@@ -484,12 +564,12 @@ require("lazy").setup({
 					-- `friendly-snippets` contains a variety of premade snippets.
 					--    See the README about individual language/framework/plugin snippets:
 					--    https://github.com/rafamadriz/friendly-snippets
-					-- {
-					--   'rafamadriz/friendly-snippets',
-					--   config = function()
-					--     require('luasnip.loaders.from_vscode').lazy_load()
-					--   end,
-					-- },
+					{
+						"rafamadriz/friendly-snippets",
+						config = function()
+							require("luasnip.loaders.from_vscode").lazy_load()
+						end,
+					},
 				},
 				opts = {},
 			},
@@ -518,6 +598,9 @@ require("lazy").setup({
 			signature = { enabled = true },
 		},
 	},
+
+	-- JAVA
+
 	{
 		"mfussenegger/nvim-jdtls",
 		config = function()
@@ -534,6 +617,8 @@ require("lazy").setup({
 		end,
 	},
 
+	-- Helper eg make JPA Entities
+
 	{
 		"andreluisos/nvim-javagenie",
 		dependencies = {
@@ -542,11 +627,85 @@ require("lazy").setup({
 		},
 	},
 
+	-- Git
+
 	{
-		"voldikss/vim-floaterm",
+		"NeogitOrg/neogit",
+		dependencies = {
+			"nvim-lua/plenary.nvim", -- required
+			"sindrets/diffview.nvim", -- optional - Diff integration
+
+			-- Only one of these is needed.
+			"nvim-telescope/telescope.nvim", -- optional
+		},
 		config = function()
-			nnoremap("<leader>T", "<cmd>FloatermToggle<cr>", "Open [T]erminal")
-			nnoremap("<leader>lg", "<cmd>FloatermNew lazygit<cr>", "[l]azy[g]it")
+			nnoremap("<leader>ng", "<cmd>Neogit<cr>", "Open Neogit")
+		end,
+	},
+
+	{
+		"lewis6991/gitsigns.nvim",
+		signs = {
+			add = { text = "┃" },
+			change = { text = "┃" },
+			delete = { text = "_" },
+			topdelete = { text = "‾" },
+			changedelete = { text = "~" },
+			untracked = { text = "┆" },
+		},
+		signs_staged = {
+			add = { text = "┃" },
+			change = { text = "┃" },
+			delete = { text = "_" },
+			topdelete = { text = "‾" },
+			changedelete = { text = "~" },
+			untracked = { text = "┆" },
+		},
+		signs_staged_enable = true,
+		signcolumn = true, -- Toggle with `:Gitsigns toggle_signs`
+		numhl = false, -- Toggle with `:Gitsigns toggle_numhl`
+		linehl = false, -- Toggle with `:Gitsigns toggle_linehl`
+		word_diff = false, -- Toggle with `:Gitsigns toggle_word_diff`
+		watch_gitdir = {
+			follow_files = true,
+		},
+		auto_attach = true,
+		attach_to_untracked = false,
+		current_line_blame = false, -- Toggle with `:Gitsigns toggle_current_line_blame`
+		current_line_blame_opts = {
+			virt_text = true,
+			virt_text_pos = "eol", -- 'eol' | 'overlay' | 'right_align'
+			delay = 1000,
+			ignore_whitespace = false,
+			virt_text_priority = 100,
+			use_focus = true,
+		},
+		current_line_blame_formatter = "<author>, <author_time:%R> - <summary>",
+		sign_priority = 6,
+		update_debounce = 100,
+		status_formatter = nil, -- Use default
+		max_file_length = 40000, -- Disable if file is longer than this (in lines)
+		preview_config = {
+			-- Options passed to nvim_open_win
+			style = "minimal",
+			relative = "cursor",
+			row = 0,
+			col = 1,
+		},
+		config = function()
+			local gitsigns = require("gitsigns")
+			nnoremap("<leader>hp", function()
+				gitsigns.preview_hunk()
+			end, "Preview hunk")
+			nnoremap("<leader>hi", function()
+				gitsigns.preview_hunk_inline()
+			end, "Preview hunk")
+			nnoremap("<leader>hb", function()
+				gitsigns.blame_line({ full = true })
+			end, "Blame")
+			nnoremap("<leader>htw", function()
+				gitsigns.toggle_word_diff()
+			end, "Toggle word diff")
 		end,
 	},
 
@@ -614,11 +773,142 @@ require("lazy").setup({
 
 	{
 		"mfussenegger/nvim-dap",
+
+		dependencies = {
+			{
+				"theHamsta/nvim-dap-virtual-text",
+				opts = {},
+			},
+
+			{
+				"microsoft/vscode-js-debug",
+				build = "npm install --legacy-peer-deps && npx gulp vsDebugServerBundle && mv dist out",
+			},
+
+			{
+				"Joakker/lua-json5",
+				build = "./install.sh",
+			},
+		},
+
 		config = function()
-			nnoremap("<leader>db", "<cmd>lua require'dap'.toggle_breakpoint()<cr>", "Toggle [B]reakpoint")
-			nnoremap("<leader>dp", "<cmd>lua require'dap'.continue()<cr>", "[D]ebug [P]lay")
-			nnoremap("<leader>dj", "<cmd>lua require'dap'.up()<cr>", "Traverse up call stack")
-			nnoremap("<leader>dk", "<cmd>lua require'dap'.down()<cr>", "Traverse down call stack")
+			local dap = require("dap")
+
+			nnoremap("<leader>db", function()
+				require("dap").toggle_breakpoint()
+			end, "Toggle [B]reakpoint")
+
+			nnoremap("<leader>dp", function()
+				require("dap").continue()
+			end, "[D]ebug [P]lay")
+
+			nnoremap("<leader>dj", function()
+				require("dap").up()
+			end, "Traverse up call stack")
+
+			nnoremap("<leader>dk", function()
+				require("dap").down()
+			end, "Traverse down call stack")
+
+			local js_based_languages = {
+				"typescript",
+				"javascript",
+				"typescriptreact",
+				"javascriptreact",
+				"vue",
+			}
+
+			dap.adapters["pwa-node"] = {
+				type = "server",
+				host = "localhost",
+				port = "${port}",
+				executable = {
+					command = "node",
+					args = {
+						vim.fn.stdpath("data") .. "/mason/packages/js-debug-adapter/js-debug/src/dapDebugServer.js",
+						"${port}",
+					},
+				},
+			}
+
+			dap.adapters["pwa-chrome"] = {
+				type = "server",
+				host = "localhost",
+				port = "${port}",
+				executable = {
+					command = "node",
+					args = {
+						vim.fn.stdpath("data") .. "/mason/packages/js-debug-adapter/js-debug/src/dapDebugServer.js",
+						"${port}",
+					},
+				},
+			}
+
+			dap.adapters["node"] = function(cb, config)
+				local nativeAdapter = dap.adapters["pwa-node"]
+
+				config.type = "pwa-node"
+
+				if type(nativeAdapter) == "function" then
+					nativeAdapter(cb, config)
+				else
+					cb(nativeAdapter)
+				end
+			end
+
+			dap.adapters["chrome"] = function(cb, config)
+				local nativeAdapter = dap.adapters["pwa-chrome"]
+
+				config.type = "pwa-chrome"
+
+				if type(nativeAdapter) == "function" then
+					nativeAdapter(cb, config)
+				else
+					cb(nativeAdapter)
+				end
+			end
+
+			for _, language in ipairs(js_based_languages) do
+				dap.configurations[language] = {
+
+					{
+						type = "pwa-node",
+						request = "launch",
+						name = "Launch file using Node.js (nvim-dap)",
+						program = "${file}",
+						cwd = "${workspaceFolder}",
+					},
+					{
+						type = "pwa-node",
+						request = "attach",
+						name = "Attach to process using Node.js (nvim.dap)",
+						processId = require("dap.utils").pick_process,
+						cwd = "${workspaceFolder}",
+					},
+					{
+						type = "pwa-chrome",
+						request = "launch",
+						name = "Launch and Debug Chrome (nvim-dap)",
+						url = function()
+							local co = coroutine.running()
+							return coroutine.create(function()
+								vim.ui.input({
+									prompt = "Enter URL: ",
+									default = "http://localhost:3000",
+								}, function(url)
+									if url == nil or url == "" then
+										return
+									else
+										coroutine.resume(co, url)
+									end
+								end)
+							end)
+						end,
+						webRoot = "${workspaceFolder}",
+						sourceMaps = true,
+					},
+				}
+			end
 		end,
 	},
 
@@ -646,18 +936,13 @@ require("lazy").setup({
 					},
 					size = 0.3,
 				},
-
-				{
-					position = "left",
-					elements = {
-						{ id = "stacks", size = 1 },
-					},
-					size = 0.2,
-				},
 			},
 		},
 		config = function(_, opts)
-			nnoremap("<leader>du", "<cmd>lua require'dapui'.toggle()<cr>", "Toggle Debug UI")
+			nnoremap("<leader>du", function()
+				require("dapui").toggle()
+			end, "Toggle Debug UI")
+
 			nnoremap(
 				"<leader>dc",
 				"<cmd>lua require'dapui'.float_element( 'console', { width = 300, height = 70, position = 'center' })<cr>",
@@ -666,10 +951,16 @@ require("lazy").setup({
 			require("dapui").setup(opts)
 		end,
 	},
+
+	{
+		"sphamba/smear-cursor.nvim",
+		opts = {},
+	},
 })
 
 --
 -- Color Scheme
+-- (I put it at the bottom so if something goes wrong on init you KNOW something is wrong)
 --
 
 vim.cmd.colorscheme("catppuccin-frappe")
