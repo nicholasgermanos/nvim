@@ -154,7 +154,23 @@ require("lazy").setup({
 		},
 	},
 
+	-- Status bar
+
 	{ "famiu/feline.nvim", opts = {} },
+
+	-- Return to session when re opening
+	{
+		"rmagatti/auto-session",
+		lazy = false,
+
+		---enables autocomplete for opts
+		---@module "auto-session"
+		---@type AutoSession.Config
+		opts = {
+			suppressed_dirs = { "~/", "~/Projects", "~/Downloads", "/" },
+			-- log_level = 'debug',
+		},
+	},
 
 	-- Keep cursor in middle of screen
 	{
@@ -163,9 +179,9 @@ require("lazy").setup({
 	},
 
 	-- Color Schemes
+
 	{ "catppuccin/nvim", as = "catppuccin" },
 
-	-- Auto Pairs
 	{
 		"windwp/nvim-autopairs",
 		event = "InsertEnter",
@@ -173,6 +189,7 @@ require("lazy").setup({
 	},
 
 	-- Show <leader> .. options as you press them
+
 	{
 		"folke/which-key.nvim",
 		event = "VeryLazy",
@@ -187,6 +204,7 @@ require("lazy").setup({
 			},
 		},
 	},
+
 	-- Indent Blankline (lines to show tab spacing)
 	{
 		"lukas-reineke/indent-blankline.nvim",
