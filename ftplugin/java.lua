@@ -44,7 +44,7 @@ dap.configurations.java = {
 		port = 51416,
 	},
 	{
-		name = "Ironick",
+		name = "SpringbootBackendApplication",
 		type = "java",
 		request = "launch",
 		mainClass = "com.nickblogsite.springboot_backend.SpringbootBackendApplication",

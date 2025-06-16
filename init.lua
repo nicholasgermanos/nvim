@@ -67,6 +67,30 @@ local function tnoremap(rhs, lhs, desc)
 	remap("t", rhs, lhs, desc)
 end
 
+local function inoremap(rhs, lhs, desc)
+	remap("i", rhs, lhs, desc)
+end
+
+inoremap("<C-j>", function()
+	local r, c = unpack(vim.api.nvim_win_get_cursor(0))
+	vim.api.nvim_win_set_cursor(vim.api.nvim_get_current_win(), { r + 1, c })
+end, "Move down in insert mode")
+
+inoremap("<C-k>", function()
+	local r, c = unpack(vim.api.nvim_win_get_cursor(0))
+	vim.api.nvim_win_set_cursor(vim.api.nvim_get_current_win(), { r - 1, c })
+end, "Move up in insert mode")
+
+inoremap("<C-l>", function()
+	local r, c = unpack(vim.api.nvim_win_get_cursor(0))
+	vim.api.nvim_win_set_cursor(vim.api.nvim_get_current_win(), { r, c + 1 })
+end, "Move right in insert mode")
+
+inoremap("<C-h>", function()
+	local r, c = unpack(vim.api.nvim_win_get_cursor(0))
+	vim.api.nvim_win_set_cursor(vim.api.nvim_get_current_win(), { r, math.max(c - 1, 0) })
+end, "Move left in insert mode")
+
 --nnoremap("k", "kzz", "Up Centered")
 --nnoremap("j", "jzz", "Down Centered")
 --nnoremap("G", "Gzz", "[G]round Centered")
@@ -79,8 +103,16 @@ nnoremap("L", function()
 	local win_num = vim.api.nvim_win_get_number(vim.api.nvim_get_current_win())
 	vim.cmd("wincmd l")
 	local win_num_new = vim.api.nvim_win_get_number(vim.api.nvim_get_current_win())
+
+	-- Move down if we are already as far right as we can go
 	if win_num == win_num_new then
 		vim.cmd("wincmd j")
+	end
+
+	-- Move up if we are also as far down as we can go
+	win_num_new = vim.api.nvim_win_get_number(vim.api.nvim_get_current_win())
+	if win_num == win_num_new then
+		vim.cmd("wincmd k")
 	end
 end, "Move to right window or down")
 
@@ -159,6 +191,7 @@ require("lazy").setup({
 	{ "famiu/feline.nvim", opts = {} },
 
 	-- Return to session when re opening
+
 	{
 		"rmagatti/auto-session",
 		lazy = false,
@@ -206,6 +239,7 @@ require("lazy").setup({
 	},
 
 	-- Indent Blankline (lines to show tab spacing)
+
 	{
 		"lukas-reineke/indent-blankline.nvim",
 		main = "ibl",
@@ -215,6 +249,7 @@ require("lazy").setup({
 	},
 
 	-- Telescope and its dependencies
+
 	{ "nvim-treesitter/nvim-treesitter" },
 
 	{ "nvim-lua/plenary.nvim" },
@@ -280,6 +315,7 @@ require("lazy").setup({
 	},
 
 	-- Neo Tree (File Tree View) and its dependencies
+
 	{ "MunifTanjim/nui.nvim" },
 
 	{
@@ -310,9 +346,14 @@ require("lazy").setup({
 					mappings = {
 						["l"] = function(state)
 							local neo_tree = require("neo-tree.sources.filesystem.commands")
+							local win_num = vim.api.nvim_win_get_number(vim.api.nvim_get_current_win())
 							neo_tree.open(state)
 							local r, c = unpack(vim.api.nvim_win_get_cursor(0))
-							vim.api.nvim_win_set_cursor(vim.api.nvim_get_current_win(), { r + 1, c })
+
+							local win_num_new = vim.api.nvim_win_get_number(vim.api.nvim_get_current_win())
+							if win_num == win_num_new then
+								vim.api.nvim_win_set_cursor(vim.api.nvim_get_current_win(), { r + 1, c })
+							end
 						end,
 						["h"] = function(state, callback)
 							local neo_tree = require("neo-tree.sources.common.commands")
@@ -328,6 +369,7 @@ require("lazy").setup({
 	},
 
 	-- LSPs
+
 	{
 		-- This stops the 'global vim not recognized' warning
 		"folke/lazydev.nvim",
@@ -350,6 +392,7 @@ require("lazy").setup({
 			{ "mason-org/mason.nvim", opts = {} },
 			"mason-org/mason-lspconfig.nvim",
 			"WhoIsSethDaniel/mason-tool-installer.nvim",
+			"pmizio/typescript-tools.nvim",
 
 			-- Useful status updates for LSP.
 			{ "j-hui/fidget.nvim", opts = {} },
@@ -361,6 +404,43 @@ require("lazy").setup({
 			vim.api.nvim_create_autocmd("LspAttach", {
 				group = vim.api.nvim_create_augroup("lsp-attach", { clear = true }),
 				callback = function(event)
+					-- Rename the variable under your cursor.
+					--  Most Language Servers support renaming across files, etc.
+					nnoremap("grn", vim.lsp.buf.rename, "[R]e[n]ame")
+
+					-- Execute a code action, usually your cursor needs to be on top of an error
+					-- or a suggestion from your LSP for this to activate.
+					nnoremap("gra", vim.lsp.buf.code_action, "[G]oto Code [A]ction")
+
+					-- Find references for the word under your cursor.
+					nnoremap("grr", require("telescope.builtin").lsp_references, "[G]oto [R]eferences")
+
+					-- Jump to the implementation of the word under your cursor.
+					--  Useful when your language has ways of declaring types without an actual implementation.
+					nnoremap("gri", require("telescope.builtin").lsp_implementations, "[G]oto [I]mplementation")
+
+					-- Jump to the definition of the word under your cursor.
+					--  This is where a variable was first declared, or where a function is defined, etc.
+					--  To jump back, press <C-t>.
+					nnoremap("grd", require("telescope.builtin").lsp_definitions, "[G]oto [D]efinition")
+
+					-- WARN: This is not Goto Definition, this is Goto Declaration.
+					--  For example, in C this would take you to the header.
+					nnoremap("grD", vim.lsp.buf.declaration, "[G]oto [D]eclaration")
+
+					-- Fuzzy find all the symbols in your current document.
+					--  Symbols are things like variables, functions, types, etc.
+					nnoremap("gO", require("telescope.builtin").lsp_document_symbols, "Open Document Symbols")
+
+					-- Fuzzy find all the symbols in your current workspace.
+					--  Similar to document symbols, except searches over your entire project.
+					nnoremap("gW", require("telescope.builtin").lsp_dynamic_workspace_symbols, "Open Workspace Symbols")
+
+					-- Jump to the type of the word under your cursor.
+					--  Useful when you're not sure what type a variable is and you want to see
+					--  the definition of its *type*, not where it was *defined*.
+					nnoremap("grt", require("telescope.builtin").lsp_type_definitions, "[G]oto [T]ype Definition")
+
 					-- This function resolves a difference between neovim nightly (version 0.11) and stable (version 0.10)
 					---@param client vim.lsp.Client
 					---@param method vim.lsp.protocol.Method
@@ -456,10 +536,23 @@ require("lazy").setup({
 			--  - capabilities (table): Override fields in capabilities. Can be used to disable certain LSP features.
 			--  - settings (table): Override the default settings passed when initializing the server.
 			--        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
+
 			local servers = {
+				ts_ls = {
+					init_options = {
+						plugins = {
+							{
+								name = "@vue/typescript-plugin",
+								location = "/Users/nickgermanos/.local/share/nvim/mason/packages/vue-language-server/node_modules/@vue/language-server/node_modules/@vue/typescript-plugin",
+								languages = { "javascript", "typescript", "vue" },
+							},
+						},
+					},
+
+					filetypes = { "typescript", "javascript", "javascriptreact", "typscriptreact", "vue" },
+				},
 				pyright = {},
-				vue_ls = {},
-				cssls = {},
+				volar = {},
 				lua_ls = {
 					settings = {
 						Lua = {
@@ -481,30 +574,17 @@ require("lazy").setup({
 						},
 					},
 				},
+				html = {},
+				cssls = {},
+				eslint = {},
 			}
 
-			local ensure_installed = vim.tbl_keys(servers or {})
-			vim.list_extend(ensure_installed, {
-				"stylua", -- Used to format Lua code
-				"autoflake",
-			})
-			require("mason-tool-installer").setup({ ensure_installed = ensure_installed })
+			--require("mason-lspconfig").setup()
 
-			require("mason-lspconfig").setup({
-				ensure_installed = {},
-				automatic_enable = true,
-				automatic_installation = false,
-				handlers = {
-					function(server_name)
-						local server = servers[server_name] or {}
-						-- This handles overriding only values explicitly passed
-						-- by the server configuration above. Useful when disabling
-						-- certain features of an LSP (for example, turning off formatting for ts_ls)
-						server.capabilities = vim.tbl_deep_extend("force", {}, capabilities, server.capabilities or {})
-						require("lspconfig")[server_name].setup(server)
-					end,
-				},
-			})
+			for name, server in pairs(servers) do
+				server.capabilities = capabilities
+				require("lspconfig")[name].setup(server)
+			end
 		end,
 	},
 
@@ -578,19 +658,17 @@ require("lazy").setup({
 					end
 					return "make install_jsregexp"
 				end)(),
-				dependencies = {
-					-- `friendly-snippets` contains a variety of premade snippets.
-					--    See the README about individual language/framework/plugin snippets:
-					--    https://github.com/rafamadriz/friendly-snippets
-					{
-						"rafamadriz/friendly-snippets",
-						config = function()
-							require("luasnip.loaders.from_vscode").lazy_load()
-						end,
-					},
-				},
-				opts = {},
 			},
+			-- `friendly-snippets` contains a variety of premade snippets.
+			--    See the README about individual language/framework/plugin snippets:
+			--    https://github.com/rafamadriz/friendly-snippets
+			{
+				"rafamadriz/friendly-snippets",
+				config = function()
+					require("luasnip.loaders.from_vscode").lazy_load()
+				end,
+			},
+
 			"folke/lazydev.nvim",
 		},
 		--- @module 'blink.cmp'
@@ -974,9 +1052,58 @@ require("lazy").setup({
 		"sphamba/smear-cursor.nvim",
 		opts = {},
 	},
+
+	{
+		"ThePrimeagen/harpoon",
+		branch = "harpoon2",
+		dependencies = { "nvim-lua/plenary.nvim" },
+		config = function()
+			local harpoon = require("harpoon")
+			harpoon:setup()
+
+			nnoremap("<leader>aj", function()
+				harpoon:list():replace_at(1)
+			end, "Harpoon add 1")
+
+			nnoremap("<leader>ak", function()
+				harpoon:list():replace_at(2)
+			end, "Harpoon add 2")
+
+			nnoremap("<leader>al", function()
+				harpoon:list():replace_at(3)
+			end, "Harpoon add 3")
+
+			nnoremap("<leader>a;", function()
+				harpoon:list():replace_at(4)
+			end, "Harpoon add 4")
+
+			nnoremap("<leader>ac", function()
+				harpoon:list():clear()
+			end, "Harpoon clear all")
+
+			nnoremap("<C-h>", function()
+				harpoon.ui:toggle_quick_menu(harpoon:list())
+			end, "Harpoon add")
+
+			nnoremap("<C-j>", function()
+				harpoon:list():select(1)
+			end, "Harpoon add")
+
+			nnoremap("<C-k>", function()
+				harpoon:list():select(2)
+			end, "Harpoon add")
+
+			nnoremap("<C-l>", function()
+				harpoon:list():select(3)
+			end, "Harpoon add")
+
+			nnoremap("<C-;>", function()
+				harpoon:list():select(4)
+			end, "Harpoon add")
+		end,
+	},
 })
 
---
 -- Color Scheme
 -- (I put it at the bottom so if something goes wrong on init you KNOW something is wrong)
 --
