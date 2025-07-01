@@ -14,6 +14,7 @@ vim.opt.softtabstop = 4
 vim.opt.shiftwidth = 4
 vim.opt.cursorline = true
 vim.opt.termguicolors = true
+vim.o.linebreak = true
 
 --
 -- Auto commands
@@ -91,9 +92,13 @@ inoremap("<C-h>", function()
 	vim.api.nvim_win_set_cursor(vim.api.nvim_get_current_win(), { r, math.max(c - 1, 0) })
 end, "Move left in insert mode")
 
---nnoremap("k", "kzz", "Up Centered")
---nnoremap("j", "jzz", "Down Centered")
---nnoremap("G", "Gzz", "[G]round Centered")
+nnoremap("k", "gk", "Up (disrespect wrapping)")
+nnoremap("j", "gj", "Down (disrespect wrapping)")
+
+vnoremap("k", "gk", "Up (disrespect wrapping)")
+vnoremap("j", "gj", "Down (disrespect wrapping)")
+
+nnoremap("<cr>", "o<esc>", "Insert new line in normal mode")
 
 nnoremap("H", function()
 	vim.cmd("wincmd h")
@@ -119,6 +124,7 @@ end, "Move to right window or down")
 nnoremap("<leader>dd", "<cmd> lua vim.diagnostic.open_float() <CR>", "?   toggles local troubleshoot")
 nnoremap("<leader>s!", "<cmd>wqa<cr>", "Save everything and quit")
 nnoremap("<leader>S!", "<cmd>qa!<cr>", "Discard all and quit")
+nnoremap("<leader>w", "<cmd>wa<cr>", "Save all")
 
 tnoremap("zz", "<C-\\><C-n>", "Exit terminal insert mode")
 
@@ -188,7 +194,10 @@ require("lazy").setup({
 
 	-- Status bar
 
-	{ "famiu/feline.nvim", opts = {} },
+	{
+		"nvim-lualine/lualine.nvim",
+		dependencies = { "nvim-tree/nvim-web-devicons" },
+	},
 
 	-- Return to session when re opening
 
@@ -629,16 +638,6 @@ require("lazy").setup({
 		},
 	},
 
-	{
-		"saghen/blink.compat",
-		-- use v2.* for blink.cmp v1.*
-		version = "2.*",
-		-- lazy.nvim will automatically load the plugin when it's required by blink.cmp
-		lazy = true,
-		-- make sure to set opts so that lazy.nvim calls blink.compat's setup
-		opts = {},
-	},
-
 	-- Autocompletion
 	{
 		"saghen/blink.cmp",
@@ -670,6 +669,9 @@ require("lazy").setup({
 			},
 
 			"folke/lazydev.nvim",
+
+			-- Thesaurus and Dictionary
+			{ "archie-judd/blink-cmp-words" },
 		},
 		--- @module 'blink.cmp'
 		--- @type blink.cmp.Config
@@ -687,12 +689,55 @@ require("lazy").setup({
 				default = { "lsp", "path", "snippets", "lazydev" },
 				providers = {
 					lazydev = { module = "lazydev.integrations.blink", score_offset = 100 },
+
+					thesaurus = {
+						name = "blink-cmp-words",
+						module = "blink-cmp-words.thesaurus",
+						-- All available options
+						opts = {
+							-- A score offset applied to returned items.
+							-- By default the highest score is 0 (item 1 has a score of -1, item 2 of -2 etc..).
+							score_offset = 0,
+
+							-- Default pointers define the lexical relations listed under each definition,
+							-- see Pointer Symbols below.
+							-- Default is as below ("antonyms", "similar to" and "also see").
+							pointer_symbols = { "!", "&", "^" },
+						},
+					},
+
+					dictionary = {
+						name = "blink-cmp-words",
+						module = "blink-cmp-words.dictionary",
+						-- All available options
+						opts = {
+							-- The number of characters required to trigger completion.
+							-- Set this higher if completion is slow, 3 is default.
+							dictionary_search_threshold = 3,
+
+							-- See above
+							score_offset = 0,
+
+							-- See above
+							pointer_symbols = { "!", "&", "^" },
+						},
+					},
+				},
+				per_filetype = {
+					text = { "dictionary", "thesaurus" },
+					markdown = { "dictionary", "thesaurus" },
 				},
 			},
 			snippets = { preset = "luasnip" },
 			fuzzy = { implementation = "lua" },
 			signature = { enabled = true },
 		},
+	},
+
+	-- Stylus
+
+	{
+		"ChiliConSql/neovim-stylus",
 	},
 
 	-- JAVA
@@ -1048,9 +1093,27 @@ require("lazy").setup({
 		end,
 	},
 
+	-- Generate Print Statements
+
+	{
+		"rareitems/printer.nvim",
+		config = function()
+			require("printer").setup({
+				keymap = "gp", -- Plugin doesn't have any keymaps by default
+			})
+		end,
+	},
+
 	{
 		"sphamba/smear-cursor.nvim",
 		opts = {},
+	},
+
+	{
+		"catgoose/nvim-colorizer.lua",
+		event = "BufReadPre",
+		opts = { -- set to setup table
+		},
 	},
 
 	{
@@ -1102,6 +1165,19 @@ require("lazy").setup({
 			end, "Harpoon add")
 		end,
 	},
+
+	{
+		"folke/zen-mode.nvim",
+		config = function()
+			nnoremap("<leader>z", function()
+				require("zen-mode").toggle({
+					window = {
+						width = 0.55,
+					},
+				})
+			end, "Zen mode")
+		end,
+	},
 })
 
 -- Color Scheme
@@ -1109,3 +1185,5 @@ require("lazy").setup({
 --
 
 vim.cmd.colorscheme("catppuccin-frappe")
+
+require("slanted_gaps")
