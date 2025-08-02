@@ -200,19 +200,20 @@ require("lazy").setup({
 	},
 
 	-- Return to session when re opening
+	-- This breaks neo-tree
 
-	{
-		"rmagatti/auto-session",
-		lazy = false,
-
-		---enables autocomplete for opts
-		---@module "auto-session"
-		---@type AutoSession.Config
-		opts = {
-			suppressed_dirs = { "~/", "~/Projects", "~/Downloads", "/" },
-			-- log_level = 'debug',
-		},
-	},
+	-- {
+	-- 	"rmagatti/auto-session",
+	-- 	lazy = false,
+	--
+	-- 	---enables autocomplete for opts
+	-- 	---@module "auto-session"
+	-- 	---@type AutoSession.Config
+	-- 	opts = {
+	-- 		suppressed_dirs = { "~/", "~/Projects", "~/Downloads", "/" },
+	-- 		-- log_level = 'debug',
+	-- 	},
+	-- },
 
 	-- Keep cursor in middle of screen
 	{
@@ -259,7 +260,9 @@ require("lazy").setup({
 
 	-- Telescope and its dependencies
 
-	{ "nvim-treesitter/nvim-treesitter" },
+	{
+		"nvim-treesitter/nvim-treesitter",
+	},
 
 	{ "nvim-lua/plenary.nvim" },
 
@@ -547,21 +550,83 @@ require("lazy").setup({
 			--        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
 
 			local servers = {
-				ts_ls = {
-					init_options = {
-						plugins = {
-							{
-								name = "@vue/typescript-plugin",
-								location = "/Users/nickgermanos/.local/share/nvim/mason/packages/vue-language-server/node_modules/@vue/language-server/node_modules/@vue/typescript-plugin",
-								languages = { "javascript", "typescript", "vue" },
+				-- Vue 3
+				vtsls = {
+					filetypes = { "javascript", "typescript", "vue" },
+					settings = {
+						vtsls = {
+							tsserver = {
+								globalPlugins = {
+									{
+										name = "@vue/typescript-plugin",
+										location = vim.fn.stdpath("data")
+											.. "/mason/packages/vue-language-server/node_modules/@vue/language-server",
+										languages = { "vue" },
+										configNamespace = "typescript",
+									},
+								},
 							},
 						},
 					},
+					on_attach = function(client, bufnr)
+						if vim.bo[bufnr].filetype == "vue" then
+							client.server_capabilities.semanticTokensProvider = nil
+						end
+					end,
+				},
+				volar = {
+					on_init = function(client)
+						client.handlers["tsserver/request"] = function(_, result, context)
+							local clients = vim.lsp.get_clients({ bufnr = context.bufnr, name = "vtsls" })
+							if #clients == 0 then
+								vim.notify(
+									"Could not find `vtsls` lsp client, vue_lsp will not work without it!",
+									vim.log.levels.ERROR
+								)
+								return
+							end
+							local ts_client = clients[1]
 
-					filetypes = { "typescript", "javascript", "javascriptreact", "typscriptreact", "vue" },
+							local param = unpack(result)
+							local id, command, payload = unpack(param)
+							ts_client:exec_cmd({
+								title = "vue_request_forward", -- You can give title anything as it's used to represent a command in the UI, `:h Client:exec_cmd`
+								command = "typescript.tsserverRequest",
+								arguments = {
+									command,
+									payload,
+								},
+							}, { bufnr = context.bufnr }, function(_, r)
+								local response_data = { { id, r.body } }
+								---@diagnostic disable-next-line: param-type-mismatch
+								client:notify("tsserver/response", response_data)
+							end)
+						end
+					end,
+					settings = {
+						typescript = {
+							inlayHints = {
+								enumMemberValues = {
+									enabled = true,
+								},
+								functionLikeReturnTypes = {
+									enabled = true,
+								},
+								propertyDeclarationTypes = {
+									enabled = true,
+								},
+								parameterTypes = {
+									enabled = true,
+									suppressWhenArgumentMatchesName = true,
+								},
+								variableTypes = {
+									enabled = true,
+								},
+							},
+						},
+					},
 				},
 				pyright = {},
-				volar = {},
 				lua_ls = {
 					settings = {
 						Lua = {
@@ -587,8 +652,6 @@ require("lazy").setup({
 				cssls = {},
 				eslint = {},
 			}
-
-			--require("mason-lspconfig").setup()
 
 			for name, server in pairs(servers) do
 				server.capabilities = capabilities
@@ -677,7 +740,7 @@ require("lazy").setup({
 		--- @type blink.cmp.Config
 		opts = {
 			keymap = {
-				preset = "default",
+				preset = "enter",
 			},
 			appearance = {
 				nerd_font_variant = "mono",
