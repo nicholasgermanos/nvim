@@ -136,28 +136,28 @@ require("lazy").setup({
 
 	-- Quality of life things
 
-	{
-		"folke/snacks.nvim",
-		priority = 1000,
-		lazy = false,
-		---@type snacks.Config
-		opts = {
-			-- your configuration comes here
-			-- or leave it empty to use the default settings
-			-- refer to the configuration section below
-			bigfile = { enabled = true },
-			dashboard = { enabled = true },
-			explorer = { enabled = true },
-			input = { enabled = true },
-			picker = { enabled = true },
-			notifier = { enabled = true },
-			quickfile = { enabled = true },
-			scope = { enabled = true },
-			scroll = { enabled = false },
-			statuscolumn = { enabled = true },
-			words = { enabled = true },
-		},
-	},
+	-- {
+	-- 	"folke/snacks.nvim",
+	-- 	priority = 1000,
+	-- 	lazy = false,
+	-- 	---@type snacks.Config
+	-- 	opts = {
+	-- 		-- your configuration comes here
+	-- 		-- or leave it empty to use the default settings
+	-- 		-- refer to the configuration section below
+	-- 		bigfile = { enabled = true },
+	-- 		dashboard = { enabled = true },
+	-- 		explorer = { enabled = true },
+	-- 		input = { enabled = true },
+	-- 		picker = { enabled = true },
+	-- 		notifier = { enabled = true },
+	-- 		quickfile = { enabled = true },
+	-- 		scope = { enabled = true },
+	-- 		scroll = { enabled = false },
+	-- 		statuscolumn = { enabled = true },
+	-- 		words = { enabled = true },
+	-- 	},
+	-- },
 
 	-- Popup errors and things
 	{
@@ -262,8 +262,15 @@ require("lazy").setup({
 
 	{
 		"nvim-treesitter/nvim-treesitter",
+		build = ":TSUpdate",
+		config = function()
+			require("nvim-treesitter.configs").setup({
+				ensure_installed = { "html", "javascript", "typescript", "vue" },
+				auto_install = true,
+				highlight = { enable = true },
+			})
+		end,
 	},
-
 	{ "nvim-lua/plenary.nvim" },
 
 	{ "BurntSushi/ripgrep" },
@@ -626,7 +633,19 @@ require("lazy").setup({
 						},
 					},
 				},
-				pyright = {},
+				basedpyright = {
+					settings = {
+						basedpyright = {
+							analysis = {
+								typeCheckingMode = "basic",
+								autoSearchPaths = true,
+								useLibraryCodeForTypes = true,
+								diagnosticMode = "workspace",
+							},
+						},
+					},
+				},
+				django_template_lsp = {},
 				lua_ls = {
 					settings = {
 						Lua = {
@@ -1239,6 +1258,37 @@ require("lazy").setup({
 					},
 				})
 			end, "Zen mode")
+		end,
+	},
+
+	{
+		"windwp/nvim-ts-autotag",
+		dependencies = { "nvim-treesitter/nvim-treesitter" },
+		config = function()
+			require("nvim-ts-autotag").setup({
+				opts = {
+					enable_close = true,
+					enable_rename = true,
+					enable_close_on_slash = false,
+				},
+			})
+		end,
+	},
+
+	{
+		"ludovicchabant/vim-gutentags",
+		config = function()
+			local cache_dir = vim.fn.stdpath("cache") .. "/ctags"
+			vim.fn.mkdir(cache_dir, "p") -- Create directory if it doesn't exist
+
+			vim.g.gutentags_enabled = 1
+			vim.g.gutentags_project_root = { ".git", ".root", ".svn", ".hg", ".project" }
+			vim.g.gutentags_cache_dir = cache_dir
+			vim.g.gutentags_generate_on_new = 1
+			vim.g.gutentags_generate_on_missing = 1
+			vim.g.gutentags_generate_on_write = 1
+			vim.g.gutentags_generate_on_empty_buffer = 0
+			vim.g.gutentags_ctags_exclude = { "node_modules", ".git", "build", "dist" }
 		end,
 	},
 })
