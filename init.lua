@@ -645,7 +645,6 @@ require("lazy").setup({
 						},
 					},
 				},
-				django_template_lsp = {},
 				lua_ls = {
 					settings = {
 						Lua = {
@@ -669,6 +668,7 @@ require("lazy").setup({
 				},
 				html = {},
 				cssls = {},
+				tailwind_css_lsp = {},
 				eslint = {},
 			}
 
@@ -713,9 +713,9 @@ require("lazy").setup({
 				lua = { "stylua" },
 				-- Conform can also run multiple formatters sequentially
 				python = { "isort", "black" },
-				--
-				-- You can use 'stop_after_first' to run the first available formatter from the list
-				-- javascript = { "prettierd", "prettier", stop_after_first = true },
+				html = { "prettierd" },
+				htmldjango = { "djlint" },
+				javascript = { "prettierd" },
 			},
 		},
 	},
